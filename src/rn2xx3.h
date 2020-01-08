@@ -40,13 +40,20 @@ enum TX_RETURN_TYPE {
 
 class rn2xx3
 {
+   private:
+       char buf[49];
+
+       unsigned long _timeout;
+
+    int _timedRead(Stream *stream, unsigned long timeout );
+    
   public:
 
     /*
      * A simplified constructor taking only a Stream ({Software/Hardware}Serial) object.
      * The serial port should already be initialised when initialising this library.
      */
-    rn2xx3(Stream& serial);
+    rn2xx3(Stream *serial);
 
     /*
      * Transmit the correct sequence to the rn2xx3 to trigger its autobauding feature.
@@ -60,34 +67,34 @@ class rn2xx3
      * You have to have a working serial connection to the radio before calling this function.
      * In other words you have to at least call autobaud() some time before this function.
      */
-    String hweui();
+    char *hweui();
 
     /*
      * Returns the AppSKey or AppKey used when initializing the radio.
      * In the case of ABP this function will return the App Session Key.
      * In the case of OTAA this function will return the App Key.
      */
-    String appkey();
+    char *appkey();
 
     /*
      * In the case of OTAA this function will return the Application EUI used
      * to initialize the radio.
      */
-    String appeui();
+    char *appeui();
 
     /*
      * In the case of OTAA this function will return the Device EUI used to
      * initialize the radio. This is not necessarily the same as the Hardware EUI.
      * To obtain the Hardware EUI, use the hweui() function.
      */
-    String deveui();
+    char *deveui();
     void setdeveui( const char *deveui );
 
     /*
      * Get the RN2xx3's hardware and firmware version number. This is also used
      * to detect if the module is either an RN2483 or an RN2903.
      */
-    String sysver();
+    char *sysver();
 
     /*
      * Initialise the RN2xx3 and join the LoRa network (if applicable).
@@ -95,7 +102,6 @@ class rn2xx3
      * The sole purpose of this function is to re-initialise the radio if it
      * is in an unknown state.
      */
-    bool init();
 
     /*
      * Initialise the RN2xx3 and join a network using personalization.
@@ -107,10 +113,10 @@ class rn2xx3
      * NwkSKey: Network Session Key as a HEX string.
      *          Example "AE17E567AECC8787F749A62F5541D522"
      */
-    bool initABP(String addr, String AppSKey, String NwkSKey);
+    bool initABP( const char *addr, const char *AppSKey, const char *NwkSKey);
 
-    //TODO: initABP(uint8_t * addr, uint8_t * AppSKey, uint8_t * NwkSKey)
-
+    bool rejoinABP();
+    
     /*
      * Initialise the RN2xx3 and join a network using over the air activation.
      *
@@ -126,18 +132,7 @@ class rn2xx3
      * they will be used. Otherwise the join will fail and this function
      * will return false.
      */
-    bool initOTAA(String AppEUI="", String AppKey="", String DevEUI="");
-
-    /*
-     * Initialise the RN2xx3 and join a network using over the air activation,
-     * using byte arrays. This is useful when storing the keys in eeprom or flash
-     * and reading them out in runtime.
-     *
-     * AppEUI: Application EUI as a uint8_t buffer
-     * AppKey: Application key as a uint8_t buffer
-     * DevEui: Device EUI as a uint8_t buffer (optional - set to 0 to use Hardware EUI)
-     */
-     bool initOTAA(uint8_t * AppEUI, uint8_t * AppKey, uint8_t * DevEui);
+    bool initOTAA( const char *AppEUI, const char *AppKey, const char *DevEUI );
 
     /*
      * Transmit the provided data. The data is hex-encoded by this library,
@@ -146,7 +141,7 @@ class rn2xx3
      *
      * Parameter is an ascii text string.
      */
-    TX_RETURN_TYPE tx(String);
+    TX_RETURN_TYPE tx(const char *);
 
     /*
      * Transmit raw byte encoded data via LoRa WAN.
@@ -160,14 +155,14 @@ class rn2xx3
      *
      * Parameter is an ascii text string.
      */
-    TX_RETURN_TYPE txCnf(String);
+    TX_RETURN_TYPE txCnf(const char *);
 
     /*
      * Do an unconfirmed transmission via LoRa WAN.
      *
      * Parameter is an ascii text string.
      */
-    TX_RETURN_TYPE txUncnf(String);
+    TX_RETURN_TYPE txUncnf(const char *);
 
     /*
      * Transmit the provided data using the provided command.
@@ -177,7 +172,7 @@ class rn2xx3
      * String - an ascii text string if bool is true. A HEX string if bool is false.
      * bool - should the data string be hex encoded or not
      */
-    TX_RETURN_TYPE txCommand(String, String, bool);
+    TX_RETURN_TYPE txCommand( const char *, const char *, bool);
 
     /*
      * Change the datarate at which the RN2xx3 transmits.
@@ -200,7 +195,9 @@ class rn2xx3
      * Returns the raw string as received back from the RN2xx3.
      * If the RN2xx3 replies with multiple line, only the first line will be returned.
      */
-    String sendRawCommand(String command);
+    char *sendRawCommand( char *command );
+    char *sendRawCommand( const __FlashStringHelper *command );
+    char *sendRawCommand( const __FlashStringHelper *command, const char *arg );
 
     /*
      * Returns the module type either RN2903 or RN2483, or NA.
@@ -217,7 +214,7 @@ class rn2xx3
     /*
      * Returns the last downlink message HEX string.
      */
-    String getRx();
+    char *getRx();
 
     /*
      * Get the RN2xx3's SNR of the last received packet. Helpful to debug link quality.
@@ -232,28 +229,28 @@ class rn2xx3
     /*
      * Factory reset
      */
-    String factoryReset();
+    char *factoryReset();
 
     /*
      * Power
      */
-    String getRadioPower();
+    char *getRadioPower();
     bool setRadioPower( int pwr );
 
     /*
      * Encode an ASCII string to a HEX string as needed when passed
      * to the RN2xx3 module.
      */
-    String base16encode(String);
+    // String base16encode(String);
 
     /*
      * Decode a HEX string to an ASCII string. Useful to decode a
      * string received from the RN2xx3.
      */
-    String base16decode(String);
+    // String base16decode(String);
 
   private:
-    Stream& _serial;
+    Stream *_serial;
 
     RN2xx3_t _moduleType = RN_NA;
 
@@ -262,30 +259,35 @@ class rn2xx3
 
     //The default address to use on TTN if no address is defined.
     //This one falls in the "testing" address space.
-    String _devAddr = "03FFBEEF";
+    char _devAddr[17];
 
     // if you want to use another DevEUI than the hardware one
     // use this deveui for LoRa WAN
-    String _deveui = "0011223344556677";
+    char _deveui[17];
 
     //the appeui to use for LoRa WAN
-    String _appeui = "0";
+    char _appeui[17];
 
     //the nwkskey to use for LoRa WAN
-    String _nwkskey = "0";
+    char _nwkskey[33];
 
     //the appskey/appkey to use for LoRa WAN
-    String _appskey = "0";
+    char _appskey[33];
 
     // The downlink messenge
-    String _rxMessenge = "";
+    char _rxMessage[33];
 
     /*
      * Auto configure for either RN2903 or RN2483 module
      */
     RN2xx3_t configureModuleType();
 
-    void sendEncoded(String);
+    // void sendEncoded(String);
+    
+    /**
+     * non-String replacement for Stream.readStringUntil()
+     */
+    const char *readCharStringUntil( Stream *stream, unsigned long timeout, char terminator, char *outbuf, size_t bufsz );
 };
 
 #endif
