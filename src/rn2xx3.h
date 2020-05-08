@@ -59,7 +59,7 @@ class rn2xx3
      * Transmit the correct sequence to the rn2xx3 to trigger its autobauding feature.
      * After this operation the rn2xx3 should communicate at the same baud rate than us.
      */
-    void autobaud();
+    bool autobaud();
 
     /*
      * Get the hardware EUI of the radio, so that we can register it on The Things Network
@@ -132,6 +132,7 @@ class rn2xx3
      * they will be used. Otherwise the join will fail and this function
      * will return false.
      */
+    bool initOTAA( const char *AppEUI, const char *AppKey );
     bool initOTAA( const char *AppEUI, const char *AppKey, const char *DevEUI );
 
     /*
