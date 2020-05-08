@@ -92,7 +92,7 @@ rn2xx3::rn2xx3(Stream *serial): _serial(serial)
 }
 
 //TODO: change to a boolean
-void rn2xx3::autobaud()
+bool rn2xx3::autobaud()
 {
     buf[0] = '\0';
 
@@ -111,7 +111,15 @@ void rn2xx3::autobaud()
         // we could use sendRawCommand(F("sys get ver")); here
         _serial->println(F("sys get ver"));
         readCharStringUntil( _serial, _timeout, '\n', buf, sizeof( buf ) );
+        if ( strlen( buf ) > 0 && strstr( buf, "RN2483") != NULL ) {
+            Serial.print( F("***") );
+            Serial.print( buf );
+            Serial.println( F("***") );
+            return true;
+        }
     }
+
+    return false;
 }
 
 
@@ -175,8 +183,11 @@ void rn2xx3::setdeveui( const char *deveui ) {
     }
 }    
 
-bool rn2xx3::initOTAA( const char *AppEUI, const char *AppKey, const char *DevEUI)
-{
+bool rn2xx3::initOTAA( const char *AppEUI, const char *AppKey ) {
+    return initOTAA( AppEUI, AppKey, NULL );
+}
+
+bool rn2xx3::initOTAA( const char *AppEUI, const char *AppKey, const char *DevEUI) {
 
   bool joined = false;
 
@@ -262,13 +273,11 @@ bool rn2xx3::initOTAA( const char *AppEUI, const char *AppKey, const char *DevEU
   }
   else
   {
-    sendRawCommand(F("mac set pwridx 14"));
+    sendRawCommand(F("mac set pwridx 1"));
   }
 
-  // TTN does not yet support Adaptive Data Rate.
-  // Using it is also only necessary in limited situations.
-  // Therefore disable it by default.
-  //sendRawCommand(F("mac set adr off"));
+  /** Disable ADR for OTAA */
+  sendRawCommand(F("mac set adr off"));
 
   // Semtech and TTN both use a non default RX2 window freq and SF.
   // Maybe we should not specify this for other networks.
@@ -773,6 +782,11 @@ char *rn2xx3::sendRawCommand( const __FlashStringHelper *command ) {
     _serial->println( command );
     //String ret = _serial->readStringUntil('\n');
     readCharStringUntil( _serial, _timeout, '\n', buf, sizeof( buf ) );
+#ifdef ARDUINO
+    Serial.print( F("***") );
+    Serial.print( buf );
+    Serial.println( F("***") );
+#endif
     //ret.trim();
 
     //TODO: Add debug print
@@ -795,6 +809,11 @@ char *rn2xx3::sendRawCommand( const __FlashStringHelper *command, const char *ar
   _serial->println(arg);
   //String ret = _serial->readStringUntil('\n');
   readCharStringUntil( _serial, _timeout, '\n', buf, sizeof( buf ) );
+#ifdef ARDUINO
+    Serial.print( F("***") );
+    Serial.print( buf );
+    Serial.println( F("***") );
+#endif
   //ret.trim();
 
   //TODO: Add debug print
@@ -813,6 +832,11 @@ char *rn2xx3::sendRawCommand( char *command ) {
     _serial->read();
   _serial->println(command);
   readCharStringUntil( _serial, _timeout, '\n', buf, sizeof( buf ) );
+#ifdef ARDUINO
+    Serial.print( F("***") );
+    Serial.print( buf );
+    Serial.println( F("***") );
+#endif
   //ret.trim();
 
   return buf;
@@ -999,13 +1023,20 @@ bool rn2xx3::isJoined() {
 
     /** Decode the status packet */
     /** We're only interested in bit0 */
-    if ( strlen(buf) != 8 ) {
-        return false;
+    if ( strlen(buf) == 4 ) {
+        /** Up to 1.0.3 RN2483 firmware */
+        uint8_t bval3 = (int)buf[3] - '0';
+        return (bval3 & 0x01) == 0x01;
+    } else {
+        if ( strlen(buf) == 8 ) {
+            /** 1.0.4+ RN2483 firmware */
+            uint8_t bval3 = (int)buf[6] - '0';
+            return (bval3 & 0x01) == 0x01;
+        } else {
+            return false;
+        }
     }
 
-    uint8_t bval3 = (int)buf[7] - '0';
-
-    return (bval3 & 0x01) == 0x01;
 }
 
 char *rn2xx3::factoryReset() {
